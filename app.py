@@ -1,13 +1,12 @@
 import datetime
 import pickle
 import warnings
-
+import numpy as np
 import lightgbm as lgb
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import streamlit as st
-import base64
 from PIL import Image
 from pandas.api.types import CategoricalDtype
 
@@ -142,7 +141,7 @@ def main():
                 resulta['DateTime'] = resulta['DateTime'].astype(str)
                 st.write(resulta)
                 st.write(
-                    f"Peak Load is {result['Load Predictions'].max():.2f} Amps on Date: {result[result['Load Predictions'] == result['Load Predictions'].max()]['DateTime'].item().date()}")
+                    f"Peak Load is {result['Load Predictions'].max():.2f} Amps on Date: {result['DateTime'].loc[result['Load Predictions'].idxmax()].date()}")
                 st.write(f"Total Consumption for this period of time is: {result['Load Predictions'].sum():.2f} Amps")
 
                 def convert_df(df):
@@ -161,17 +160,19 @@ def main():
 
                 sns.lineplot(
                     x='DateTime', y='Load Predictions', data=result)
-                x1 = result[result["Load Predictions"] == result["Load Predictions"].max()]['DateTime'].item()
-                y1 = result['Load Predictions'].max()
+                x1 = result[result["Load Predictions"] == result["Load Predictions"].max()]['DateTime']
+
+                y1 = np.full(len(x1), result['Load Predictions'].max())
+
                 ax.plot(x1, y1, "ko", markersize=20, fillstyle='full', color='red')
-                plt.annotate(
-                    f"Peak Load ({result[result['Load Predictions'] == result['Load Predictions'].max()]['DateTime'].item().date()}, {result['Load Predictions'].max():.2f} Amps)",
-                    xy=(result[result['Load Predictions'] == result['Load Predictions'].max()]['DateTime'].item(),
-                        result['Load Predictions'].max()),
-                    xytext=(result[result['Load Predictions'] == result['Load Predictions'].max()][
-                                'DateTime'].item() + pd.Timedelta(2, unit='D'),
-                            result['Load Predictions'].max() + 2),
-                    arrowprops=dict(arrowstyle="->"), weight='bold', fontsize=15)
+
+                for i in range(len(x1)):
+                    plt.annotate(
+                        f"Peak Load ({x1.iloc[i].date()}, {y1[i]:.2f} Amps)",
+                        xy=(x1.iloc[i], y1[i]),
+                        xytext=(x1.iloc[i] + pd.Timedelta(2, unit='D'),
+                                y1[i] + 2),
+                        arrowprops=dict(arrowstyle="->"), weight='bold', fontsize=15)
 
                 st.write("The following plot shows predicted Load for your provide Datetime Frame:")
                 st.pyplot(fig)
@@ -180,7 +181,7 @@ def main():
     with st.expander("Real Time Forecasts with Datetime Range"):
         st.write('From:')
         date1 = st.date_input(
-            'Date', datetime.date(2017, 7, 1), key='hst%N@&n8&dn2')  # (2011, 1, 28))
+            'Date', datetime.date(2020, 12, 3), key='hst%N@&n8&dn2')  # (2011, 1, 28))
         time1 = st.time_input(
             'Time', datetime.time(0, 00), key='hsye^8nyBT@8b2')  # (hour=18, minute=54, second=30))
         datestr = date1.strftime("%Y-%m-%d")
@@ -207,7 +208,7 @@ def main():
         forecast = pd.concat([forecast_junc, forecast], axis=1)
 
         st.write(
-            f"Peak Load is {forecast['Load Predictions'].max():.2f} Amps on Date: {forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item().date()}")
+            f"Peak Load is {forecast['Load Predictions'].max():.2f} Amps on Date: {forecast['DateTime'].loc[forecast['Load Predictions'].idxmax()].date()}")
         st.write(f"Total Consumption for this period of time is: {forecast['Load Predictions'].sum():.2f} Amps")
 
         def convert_df(df):
@@ -225,17 +226,23 @@ def main():
         ax = fig.add_subplot(1, 1, 1)
         sns.lineplot(
             x='DateTime', y='Load Predictions', data=forecast)
-        x1 = forecast[forecast["Load Predictions"] == forecast["Load Predictions"].max()]['DateTime'].item()
-        y1 = forecast['Load Predictions'].max()
+        #x1 = forecast['DateTime'].loc[forecast['Load Predictions'].idxmax()]
+
+        x1 = forecast[forecast["Load Predictions"] == forecast["Load Predictions"].max()]['DateTime']
+        # y1 = forecast['Load Predictions'].max()
+
+        y1 = np.full(len(x1), forecast['Load Predictions'].max())
+
         ax.plot(x1, y1, "ko", markersize=20, fillstyle='full', color='red')
-        plt.annotate(
-            f"Peak Load ({forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item().date()}, {forecast['Load Predictions'].max():.2f} Amps)",
-            xy=(forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item(),
-                forecast['Load Predictions'].max()),
-            xytext=(forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()][
-                        'DateTime'].item() + pd.Timedelta(2, unit='D'),
-                    forecast['Load Predictions'].max() + 2),
-            arrowprops=dict(arrowstyle="->"), weight='bold', fontsize=15)
+
+        for i in range(len(x1)):
+
+            plt.annotate(
+                f"Peak Load ({x1.iloc[i].date()}, {y1[i]:.2f} Amps)",
+                xy=(x1.iloc[i], y1[i]),
+                xytext=(x1.iloc[i] + pd.Timedelta(2, unit='D'),
+                        y1[i] + 2),
+                arrowprops=dict(arrowstyle="->"), weight='bold', fontsize=15)
         st.pyplot(fig)
 
         st.text("UNILAG Feeders Load Prediction Project")
