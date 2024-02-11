@@ -8,6 +8,8 @@ import seaborn as sns
 import warnings
 import lightgbm as lgb
 
+from datetime import datetime as dt
+
 warnings.filterwarnings("ignore")
 
 cat_type = CategoricalDtype(categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
@@ -78,7 +80,7 @@ def main():
     # st.title("Junction Traffic Predictor by Team Scipy")
     html_temp = """
     <div style="background-color:tomato;padding:10px">
-    <h2 style="color:white;text-align:center;font-family:'Caveat',cursive;font-weight: 400;max-width: 800px; width: 85%; margin: 0 auto;">Electric Load Predictor</h2>
+    <h2 style="color:white;text-align:center;font-family:'Caveat',cursive;font-weight: 400;max-width: 800px; width: 85%; margin: 0 auto;">UNILAG Feeders Load Predictor</h2>
     </div>
     """
     st.markdown(html_temp, unsafe_allow_html=True)
@@ -98,7 +100,7 @@ def main():
         result = prediction
     st.success('Successful!!!')
     st.write('The Load Prediction at Date:',
-             date, 'and Time:', time, 'is: ', prediction, '\u00B1 3 MWh')
+             date, 'and Time:', time, 'is: ', prediction, '\u00B1 3 Amps')
     st.write('OR')
 
     with st.expander("Upload CSV with DateTime Column"):
@@ -124,6 +126,9 @@ def main():
                 resulta = result.copy()
                 resulta['DateTime'] = resulta['DateTime'].astype(str)
                 st.write(resulta)
+                st.write(
+                    f"Peak Load is {result['Load Predictions'].max():.2f} Amps on Date: {result[result['Load Predictions'] == result['Load Predictions'].max()]['DateTime'].item().date()}")
+                st.write(f"Total Consumption for this period of time is: {result['Load Predictions'].sum():.2f} Amps")
 
                 def convert_df(df):
                     # IMPORTANT: Cache the conversion to prevent computation on every rerun
@@ -137,8 +142,21 @@ def main():
                     mime="text/csv",
                 )
                 fig = plt.figure(figsize=(12, 10))
+                ax = fig.add_subplot(1, 1, 1)
+
                 sns.lineplot(
                     x='DateTime', y='Load Predictions', data=result)
+                x1 = result[result["Load Predictions"] == result["Load Predictions"].max()]['DateTime'].item()
+                y1 = result['Load Predictions'].max()
+                ax.plot(x1, y1, "ko", markersize=20, fillstyle='full', color='red')
+                plt.annotate(
+                    f"Peak Load ({result[result['Load Predictions'] == result['Load Predictions'].max()]['DateTime'].item().date()}, {result['Load Predictions'].max():.2f} Amps)",
+                    xy=(result[result['Load Predictions'] == result['Load Predictions'].max()]['DateTime'].item(),
+                        result['Load Predictions'].max()),
+                    xytext=(result[result['Load Predictions'] == result['Load Predictions'].max()][
+                                'DateTime'].item() + pd.Timedelta(2, unit='D'),
+                            result['Load Predictions'].max() + 2),
+                    arrowprops=dict(arrowstyle="->"), weight='bold', fontsize=15)
 
                 st.write("The following plot shows predicted Load for your provide Datetime Frame:")
                 st.pyplot(fig)
@@ -173,7 +191,8 @@ def main():
         forecast = predict_load(forecast_junc['DateTime'])
         forecast = pd.concat([forecast_junc, forecast], axis=1)
 
-        # st.write(forecast_junc)
+        st.write(f"Peak Load is {forecast['Load Predictions'].max():.2f} Amps on Date: {forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item().date()}")
+        st.write(f"Total Consumption for this period of time is: {forecast['Load Predictions'].sum():.2f} Amps")
 
         def convert_df(df):
             # IMPORTANT: Cache the conversion to prevent computation on every rerun
@@ -187,11 +206,22 @@ def main():
             mime="text/csv",
         )
         fig = plt.figure(figsize=(20, 10))
+        ax= fig.add_subplot(1,1,1)
         sns.lineplot(
             x='DateTime', y='Load Predictions', data=forecast)
+        x1 = forecast[forecast["Load Predictions"] == forecast["Load Predictions"].max()]['DateTime'].item()
+        y1= forecast['Load Predictions'].max()
+        ax.plot(x1, y1, "ko", markersize=20, fillstyle='full', color = 'red')
+        plt.annotate(
+            f"Peak Load ({forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item().date()}, {forecast['Load Predictions'].max():.2f} Amps)",
+            xy=(forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item(),
+                forecast['Load Predictions'].max()),
+            xytext=(forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item() + pd.Timedelta(2, unit='D'),
+                    forecast['Load Predictions'].max() + 2),
+            arrowprops=dict(arrowstyle="->"), weight='bold', fontsize=15)
         st.pyplot(fig)
 
-        st.text("Electric Load Prediction Project")
+        st.text("UNILAG Feeders Load Prediction Project")
         st.text("Built with Streamlit")
 
 
