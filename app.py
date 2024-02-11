@@ -9,6 +9,8 @@ import seaborn as sns
 import streamlit as st
 from PIL import Image
 from pandas.api.types import CategoricalDtype
+from pandas.errors import EmptyDataError
+
 
 
 
@@ -198,52 +200,65 @@ def main():
         # DateTime1 = pd.to_datetime(DateTime)
         st.write('Real Time Forecasts')
 
-        forecast_junc = pd.date_range(
-            start=DateTime, end=DateTime1, freq='H')
-        forecast_junc = pd.DataFrame({'DateTime': forecast_junc})
+        try:
+
+            if DateTime > DateTime1:  # check if start date is later than end date
+                raise ValueError('Start date cannot be later than end date')
+
+
+            forecast_junc = pd.date_range(
+                start=DateTime, end=DateTime1, freq='H')
+            forecast_junc = pd.DataFrame({'DateTime': forecast_junc})
+            if forecast_junc.empty:  # check if date range is empty
+                raise EmptyDataError('Date range is empty')
+
+            st.write('Real Time Load Forecast from', DateTime, 'to', DateTime1)
+            forecast = predict_load(forecast_junc['DateTime'])
+        except (ValueError, EmptyDataError) as e:  # catch both types of errors
+            st.write(e)
         # if st.button('Forecast'):
 
-        st.write('Real Time Load Forecast from', DateTime, 'to', DateTime1)
-        forecast = predict_load(forecast_junc['DateTime'])
-        forecast = pd.concat([forecast_junc, forecast], axis=1)
+        else:
 
-        st.write(
-            f"Peak Load is {forecast['Load Predictions'].max():.2f} Amps on Date: {forecast['DateTime'].loc[forecast['Load Predictions'].idxmax()].date()}")
-        st.write(f"Total Consumption for this period of time is: {forecast['Load Predictions'].sum():.2f} Amps")
+            forecast = pd.concat([forecast_junc, forecast], axis=1)
 
-        def convert_df(df):
-            # IMPORTANT: Cache the conversion to prevent computation on every rerun
-            return df.to_csv(index=False).encode("utf-8")
+            st.write(
+                f"Peak Load is {forecast['Load Predictions'].max():.2f} Amps on Date: {forecast['DateTime'].loc[forecast['Load Predictions'].idxmax()].date()}")
+            st.write(f"Total Consumption for this period of time is: {forecast['Load Predictions'].sum():.2f} Amps")
 
-        csv = convert_df(forecast)
-        st.download_button(
-            label="Download DateTime Range Predictions as CSV",
-            data=csv,
-            file_name="Load Predictions by DateTime Range.csv",
-            mime="text/csv",
-        )
-        fig = plt.figure(figsize=(20, 10))
-        ax = fig.add_subplot(1, 1, 1)
-        sns.lineplot(
-            x='DateTime', y='Load Predictions', data=forecast)
-        #x1 = forecast['DateTime'].loc[forecast['Load Predictions'].idxmax()]
+            def convert_df(df):
+                # IMPORTANT: Cache the conversion to prevent computation on every rerun
+                return df.to_csv(index=False).encode("utf-8")
 
-        x1 = forecast[forecast["Load Predictions"] == forecast["Load Predictions"].max()]['DateTime']
-        # y1 = forecast['Load Predictions'].max()
+            csv = convert_df(forecast)
+            st.download_button(
+                label="Download DateTime Range Predictions as CSV",
+                data=csv,
+                file_name="Load Predictions by DateTime Range.csv",
+                mime="text/csv",
+            )
+            fig = plt.figure(figsize=(20, 10))
+            ax = fig.add_subplot(1, 1, 1)
+            sns.lineplot(
+                x='DateTime', y='Load Predictions', data=forecast)
+            #x1 = forecast['DateTime'].loc[forecast['Load Predictions'].idxmax()]
 
-        y1 = np.full(len(x1), forecast['Load Predictions'].max())
+            x1 = forecast[forecast["Load Predictions"] == forecast["Load Predictions"].max()]['DateTime']
+            # y1 = forecast['Load Predictions'].max()
 
-        ax.plot(x1, y1, "ko", markersize=20, fillstyle='full', color='red')
+            y1 = np.full(len(x1), forecast['Load Predictions'].max())
 
-        for i in range(len(x1)):
+            ax.plot(x1, y1, "ko", markersize=20, fillstyle='full', color='red')
 
-            plt.annotate(
-                f"Peak Load ({x1.iloc[i].date()}, {y1[i]:.2f} Amps)",
-                xy=(x1.iloc[i], y1[i]),
-                xytext=(x1.iloc[i] + pd.Timedelta(2, unit='D'),
-                        y1[i] + 2),
-                arrowprops=dict(arrowstyle="->"), weight='bold', fontsize=15)
-        st.pyplot(fig)
+            for i in range(len(x1)):
+
+                plt.annotate(
+                    f"Peak Load ({x1.iloc[i].date()}, {y1[i]:.2f} Amps)",
+                    xy=(x1.iloc[i], y1[i]),
+                    xytext=(x1.iloc[i] + pd.Timedelta(2, unit='D'),
+                            y1[i] + 2),
+                    arrowprops=dict(arrowstyle="->"), weight='bold', fontsize=15)
+            st.pyplot(fig)
 
         st.text("UNILAG Feeders Load Prediction Project")
         st.text("Built with Streamlit")
