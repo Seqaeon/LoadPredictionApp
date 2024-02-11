@@ -1,22 +1,38 @@
-import streamlit as st
 import datetime
-from pandas.api.types import CategoricalDtype
-import pandas as pd
 import pickle
-import matplotlib.pyplot as plt
-import seaborn as sns
 import warnings
-import lightgbm as lgb
 
-from datetime import datetime as dt
+import lightgbm as lgb
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import streamlit as st
+import base64
+from PIL import Image
+from pandas.api.types import CategoricalDtype
+
+
+
+
+
+# # Load an image from a local file and encode it to base64
+# with open("Transformer.jpg", "rb") as f:
+#     data = base64.b64encode(f.read()).decode("utf-8")
+#
+# # Display the image at the top of the site using HTML
+# st.markdown(f"""
+# <div style="align: center;">
+#     <img src="data:image/jpg;base64, {data}" alt="This is my header image" width="1000">
+# </div>
+# """, unsafe_allow_html=True)
 
 warnings.filterwarnings("ignore")
 
 cat_type = CategoricalDtype(categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
                             ordered=True)
 
-
 bst = lgb.Booster(model_file='mode.pkl')
+
 
 # @app.route('/')
 
@@ -31,9 +47,7 @@ def welcome():
 def predict_load(DateTime):
     df = pd.DataFrame(columns=['DateTime', 'hour', 'dayofweek', 'quarter', 'month', 'year', 'dayofyear',
                                'dayofmonth', 'weekofyear', 'weekday', 'season'])
-    """
-    Creates time series features from datetime index.
-    """
+
 
     if isinstance(DateTime, str):
         df.loc[0] = 0
@@ -55,7 +69,6 @@ def predict_load(DateTime):
 
     df['season'] = pd.cut(df['date_offset'], [0, 300, 602, 900, 1300],
                           labels=['Cold', 'Dry Season', 'Raining Season', 'Harmattan'])
-    # X = df[['hour', 'dayofweek', 'quarter', 'month', 'year', 'dayofyear', 'dayofmonth', 'weekofyear', 'weekday', 'season']]
 
     df.set_index('DateTime', inplace=True)
     df.drop("date_offset", axis=1, inplace=True)
@@ -84,7 +97,9 @@ def main():
     </div>
     """
     st.markdown(html_temp, unsafe_allow_html=True)
+    image = Image.open("Transformer.jpg")
 
+    st.image(image, width=700)
     date = st.sidebar.date_input(
         'Date', datetime.datetime.today())  # (2011, 1, 28))
     time = st.sidebar.time_input(
@@ -191,7 +206,8 @@ def main():
         forecast = predict_load(forecast_junc['DateTime'])
         forecast = pd.concat([forecast_junc, forecast], axis=1)
 
-        st.write(f"Peak Load is {forecast['Load Predictions'].max():.2f} Amps on Date: {forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item().date()}")
+        st.write(
+            f"Peak Load is {forecast['Load Predictions'].max():.2f} Amps on Date: {forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item().date()}")
         st.write(f"Total Consumption for this period of time is: {forecast['Load Predictions'].sum():.2f} Amps")
 
         def convert_df(df):
@@ -206,17 +222,18 @@ def main():
             mime="text/csv",
         )
         fig = plt.figure(figsize=(20, 10))
-        ax= fig.add_subplot(1,1,1)
+        ax = fig.add_subplot(1, 1, 1)
         sns.lineplot(
             x='DateTime', y='Load Predictions', data=forecast)
         x1 = forecast[forecast["Load Predictions"] == forecast["Load Predictions"].max()]['DateTime'].item()
-        y1= forecast['Load Predictions'].max()
-        ax.plot(x1, y1, "ko", markersize=20, fillstyle='full', color = 'red')
+        y1 = forecast['Load Predictions'].max()
+        ax.plot(x1, y1, "ko", markersize=20, fillstyle='full', color='red')
         plt.annotate(
             f"Peak Load ({forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item().date()}, {forecast['Load Predictions'].max():.2f} Amps)",
             xy=(forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item(),
                 forecast['Load Predictions'].max()),
-            xytext=(forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()]['DateTime'].item() + pd.Timedelta(2, unit='D'),
+            xytext=(forecast[forecast['Load Predictions'] == forecast['Load Predictions'].max()][
+                        'DateTime'].item() + pd.Timedelta(2, unit='D'),
                     forecast['Load Predictions'].max() + 2),
             arrowprops=dict(arrowstyle="->"), weight='bold', fontsize=15)
         st.pyplot(fig)
