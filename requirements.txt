@@ -1,11 +1,9 @@
-scipy>=1.7.3
-scikit-learn ==1.4.0
 matplotlib>=3.5.1
 pandas>=1.4.2
-numpy>=1.22.4
-streamlit
-tqdm>=4.64.0
+streamlit~=1.31.0
 lightgbm==4.3.0
-catboost==1.1
 seaborn==0.12.2
 
+
+pillow~=10.2.0
+numpy~=1.26.4

@@ -11,22 +11,6 @@ from PIL import Image
 from pandas.api.types import CategoricalDtype
 from pandas.errors import EmptyDataError
 
-
-
-
-
-
-# # Load an image from a local file and encode it to base64
-# with open("Transformer.jpg", "rb") as f:
-#     data = base64.b64encode(f.read()).decode("utf-8")
-#
-# # Display the image at the top of the site using HTML
-# st.markdown(f"""
-# <div style="align: center;">
-#     <img src="data:image/jpg;base64, {data}" alt="This is my header image" width="1000">
-# </div>
-# """, unsafe_allow_html=True)
-
 warnings.filterwarnings("ignore")
 
 cat_type = CategoricalDtype(categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
@@ -45,10 +29,9 @@ def welcome():
 # @app.route('/predict',methods=["Get"])
 
 
-def predict_load(DateTime):
+def predict_load(DateTime, Feeder):
     df = pd.DataFrame(columns=['DateTime', 'hour', 'dayofweek', 'quarter', 'month', 'year', 'dayofyear',
-                               'dayofmonth', 'weekofyear', 'weekday', 'season'])
-
+                               'dayofmonth', 'weekofyear', 'weekday', 'season', 'Feeder'])
 
     if isinstance(DateTime, str):
         df.loc[0] = 0
@@ -74,6 +57,7 @@ def predict_load(DateTime):
     df.set_index('DateTime', inplace=True)
     df.drop("date_offset", axis=1, inplace=True)
     df = pd.get_dummies(df, columns=['weekday', 'season'])
+    df['Feeder'] = Feeder
     pkl_file = open('scaler.pkl', 'rb')
     scaler = pickle.load(pkl_file)
     pkl_file.close()
@@ -109,14 +93,14 @@ def main():
     timestr = time.strftime("%H:%M:%S")
     DateTime = datestr + ' ' + timestr
     DateTime1 = pd.to_datetime(DateTime)
+    feeder = st.selectbox('Choose Feeder:', (range(1, 10)))
 
-    prediction = predict_load(DateTime)
+    prediction = predict_load(DateTime, feeder)
     result = ""
     if st.button("Predict"):
         result = prediction
     st.success('Successful!!!')
-    st.write('The Load Prediction at Date:',
-             date, 'and Time:', time, 'is: ', prediction, '\u00B1 3 Amps')
+    st.write(f'The Load Prediction for Feeder: {feeder} at Date: {date} and Time: {time} is: {prediction:.2f} \u00B1 3 Amps')
     st.write('OR')
 
     with st.expander("Upload CSV with DateTime Column"):
@@ -131,7 +115,9 @@ def main():
             dataset["DateTime"] = pd.to_datetime(dataset["DateTime"])
             dataset = dataset.sort_values("DateTime")
 
-            results = predict_load(dataset["DateTime"])
+            feeder = st.selectbox('Choose Feeder:', (range(1, 10)), key='hdth2573@%#dgjsj@')
+
+            results = predict_load(dataset["DateTime"], feeder)
             st.write("Upload Sucessful")
             st.session_state.counter += 1
             if st.button("Predict Dataset"):
@@ -170,7 +156,7 @@ def main():
 
                 for i in range(len(x1)):
                     plt.annotate(
-                        f"Peak Load ({x1.iloc[i].date()}, {y1[i]:.2f} Amps)",
+                        f"{y1[i]:.2f} Amps",
                         xy=(x1.iloc[i], y1[i]),
                         xytext=(x1.iloc[i] + pd.Timedelta(2, unit='D'),
                                 y1[i] + 2),
@@ -199,12 +185,12 @@ def main():
         DateTime1 = datestr + ' ' + timestr
         # DateTime1 = pd.to_datetime(DateTime)
         st.write('Real Time Forecasts')
+        feeder = st.selectbox('Choose Feeder:', (range(1, 10)), key='ksu2@uNnyw1*2')
 
         try:
 
             if DateTime > DateTime1:  # check if start date is later than end date
                 raise ValueError('Start date cannot be later than end date')
-
 
             forecast_junc = pd.date_range(
                 start=DateTime, end=DateTime1, freq='H')
@@ -213,7 +199,7 @@ def main():
                 raise EmptyDataError('Date range is empty')
 
             st.write('Real Time Load Forecast from', DateTime, 'to', DateTime1)
-            forecast = predict_load(forecast_junc['DateTime'])
+            forecast = predict_load(forecast_junc['DateTime'], feeder)
         except (ValueError, EmptyDataError) as e:  # catch both types of errors
             st.write(e)
         # if st.button('Forecast'):
@@ -241,7 +227,7 @@ def main():
             ax = fig.add_subplot(1, 1, 1)
             sns.lineplot(
                 x='DateTime', y='Load Predictions', data=forecast)
-            #x1 = forecast['DateTime'].loc[forecast['Load Predictions'].idxmax()]
+            # x1 = forecast['DateTime'].loc[forecast['Load Predictions'].idxmax()]
 
             x1 = forecast[forecast["Load Predictions"] == forecast["Load Predictions"].max()]['DateTime']
             # y1 = forecast['Load Predictions'].max()
@@ -251,12 +237,10 @@ def main():
             ax.plot(x1, y1, "ko", markersize=20, fillstyle='full', color='red')
 
             for i in range(len(x1)):
-
                 plt.annotate(
-                    f"Peak Load ({x1.iloc[i].date()}, {y1[i]:.2f} Amps)",
+                    f"{y1[i]:.2f} Amps",
                     xy=(x1.iloc[i], y1[i]),
-                    xytext=(x1.iloc[i] + pd.Timedelta(2, unit='D'),
-                            y1[i] + 2),
+                    xytext=(x1.iloc[i] + pd.Timedelta(2, unit='D'), y1[i] + 2),
                     arrowprops=dict(arrowstyle="->"), weight='bold', fontsize=15)
             st.pyplot(fig)
 
