@@ -2,6 +2,7 @@ import datetime
 import pickle
 import warnings
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 import lightgbm as lgb
 import matplotlib.pyplot as plt
 import pandas as pd
